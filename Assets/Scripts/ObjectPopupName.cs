@@ -18,6 +18,8 @@ namespace parable
             textMeshContainer.transform.Translate(transform.position); // move to initial position at the obj
             textMeshContainer.transform.Translate(0, 0.4f, 0, transform); // move it just above the obj
 
+            textMeshContainer.AddComponent<LookAtCamera>();
+
             // create the text mesh
             textMesh = textMeshContainer.AddComponent<TextMesh>();
             textMesh.text = name;
@@ -30,15 +32,6 @@ namespace parable
         void IFocusable.OnFocusExit()
         {
             Destroy(textMeshContainer);
-        }
-
-        void Update()
-        {
-            if (textMeshContainer != null)
-            {
-                textMeshContainer.transform.LookAt(Camera.main.transform); // always face the camera
-                textMeshContainer.transform.localEulerAngles += new Vector3(0, 180, 0); // text comes out reversed?
-            }
         }
     }
 }
