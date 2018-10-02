@@ -34,6 +34,7 @@ namespace parable
                         gameObject.transform.localScale = new Vector3(obj.scale_x, obj.scale_y, obj.scale_z);
 
                         gameObject.name = obj.name;
+                        gameObject.AddComponent<ObjectPopupName>(); // show name on focus
 
                         // components required for picking up the object
                         gameObject.AddComponent<HoloToolkit.Unity.InputModule.HandDraggable>();
