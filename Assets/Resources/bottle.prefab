@@ -24,7 +24,6 @@ GameObject:
   - component: {fileID: 95126834623268884}
   - component: {fileID: 136953071159558996}
   - component: {fileID: 114843125671920234}
-  - component: {fileID: 114346116069069718}
   m_Layer: 0
   m_Name: bottle
   m_TagString: Untagged
@@ -103,18 +102,6 @@ Animator:
   m_WarningMessage: 
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
---- !u!114 &114346116069069718
-MonoBehaviour:
-  m_ObjectHideFlags: 1
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 100100000}
-  m_GameObject: {fileID: 1357198840876696}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c580de5d8675b2e40be2f05175cb9d5c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  isSignificant: 0
 --- !u!114 &114843125671920234
 MonoBehaviour:
   m_ObjectHideFlags: 1
