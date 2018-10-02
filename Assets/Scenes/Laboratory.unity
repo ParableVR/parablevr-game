@@ -2210,6 +2210,7 @@ GameObject:
   - component: {fileID: 1764932187}
   - component: {fileID: 1764932186}
   - component: {fileID: 1764932191}
+  - component: {fileID: 1764932192}
   m_Layer: 0
   m_Name: Dryer
   m_TagString: Untagged
@@ -2360,6 +2361,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d1bac15635ae0c54cbb6b3fc7a9e9fe4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1764932192
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 1764932181}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 876de2d42cb1eec4c9043ea3a2c247eb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &1773659933 stripped

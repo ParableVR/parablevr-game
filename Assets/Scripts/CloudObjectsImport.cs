@@ -5,6 +5,7 @@ using UnityEngine.Networking;
 using Newtonsoft.Json;
 using System;
 using parable.objects;
+using parable.eventloggers;
 
 namespace parable
 {
@@ -47,6 +48,9 @@ namespace parable
                         gameObject.AddComponent<HoloToolkit.Unity.InputModule.HandDraggable>();
                         gameObject.AddComponent<Rigidbody>();
                         gameObject.AddComponent<BoxCollider>();
+
+                        // perception logging
+                        gameObject.AddComponent<PerceptionEvent>();
                     }
                 }
             }
