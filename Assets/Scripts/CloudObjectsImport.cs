@@ -30,6 +30,15 @@ namespace parable
                             new Vector3(obj.x, obj.y, obj.z),
                             new Quaternion(obj.pitch, obj.yaw, obj.roll, 1),
                             cloudObjParent);
+
+                        gameObject.transform.localScale = new Vector3(obj.scale_x, obj.scale_y, obj.scale_z);
+
+                        gameObject.name = obj.name;
+
+                        // components required for picking up the object
+                        gameObject.AddComponent<HoloToolkit.Unity.InputModule.HandDraggable>();
+                        gameObject.AddComponent<Rigidbody>();
+                        gameObject.AddComponent<BoxCollider>();
                     }
                 }
             }
@@ -67,6 +76,7 @@ namespace parable
     public class Object
     {
         public string id { get; set; }
+        public string name { get; set; }
         public string path { get; set; }
         public float x { get; set; }
         public float y { get; set; }
@@ -74,6 +84,9 @@ namespace parable
         public float yaw { get; set; }
         public float pitch { get; set; }
         public float roll { get; set; }
+        public float scale_x { get; set; }
+        public float scale_y { get; set; }
+        public float scale_z { get; set; }
         public bool significant { get; set; }
     }
 }
