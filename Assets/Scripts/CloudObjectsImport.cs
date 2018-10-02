@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 using Newtonsoft.Json;
 using System;
+using parable.objects;
 
 namespace parable
 {
@@ -21,60 +22,37 @@ namespace parable
 
                 if (!string.IsNullOrEmpty(ep.text))
                 {
-                    ScenarioResponse res = JsonConvert.DeserializeObject<ScenarioResponse>(ep.text);
+                    CloudScenarioResponse res = JsonConvert.DeserializeObject<CloudScenarioResponse>(ep.text);
 
-                    foreach (Object obj in res.scenario.objects)
+                    foreach (CloudObject obj in res.scenario.objects)
                     {
                         GameObject gameObject = (GameObject)Instantiate(
                             Resources.Load(obj.path, typeof(GameObject)),
                             new Vector3(obj.x, obj.y, obj.z),
                             new Quaternion(obj.pitch, obj.yaw, obj.roll, 1),
                             cloudObjParent);
+
+                        gameObject.layer = 8; // layer 8 = cloudobjects layer
+                        gameObject.transform.localScale = new Vector3(obj.scale_x, obj.scale_y, obj.scale_z);
+
+                        gameObject.name = obj.name;
+                        gameObject.AddComponent<ObjectPopupName>(); // show name on focus
+
+                        // add various props from the cloudobject that aren't already present
+                        CloudComponent cloudComponent = gameObject.AddComponent<CloudComponent>();
+                        cloudComponent.cId = obj.id;
+                        cloudComponent.cSignificant = obj.significant;
+
+                        // components required for picking up the object
+                        gameObject.AddComponent<HoloToolkit.Unity.InputModule.HandDraggable>();
+                        gameObject.AddComponent<Rigidbody>();
+                        gameObject.AddComponent<BoxCollider>();
                     }
                 }
             }
 
             return;
         }
-	
-	    // Update is called once per frame
-	    void Update () {
-		    
-	    }
-    }
-
-    public class ScenarioResponse
-    {
-        public string message { get; set; }
-        public Scenario scenario { get; set; }
-    }
-
-
-    public class Scenario
-    {
-        public string id { get; set; }
-        public string name { get; set; }
-        public string description { get; set; }
-        public string goal { get; set; }
-        public DateTime when_created { get; set; }
-        public DateTime? when_deleted { get; set; }
-        public string linked_preb_scenario { get; set; }
-        public string linked_next_scenario { get; set; }
-        public List<Object> objects { get; set; }
-    }
-
-
-    public class Object
-    {
-        public string id { get; set; }
-        public string path { get; set; }
-        public float x { get; set; }
-        public float y { get; set; }
-        public float z { get; set; }
-        public float yaw { get; set; }
-        public float pitch { get; set; }
-        public float roll { get; set; }
-        public bool significant { get; set; }
     }
 }
 
