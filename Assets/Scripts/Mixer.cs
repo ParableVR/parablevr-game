@@ -53,7 +53,7 @@ namespace parable
 
                     // add various props from the cloudobject that aren't already present
                     CloudComponent cloudComponent = gameObject.AddComponent<CloudComponent>();
-                    cloudComponent.cId = null; // these values will eventually be from the db
+                    cloudComponent.cId = "5bb425bccc7ed83ee3cfbd8d"; // these values will eventually be from the db
                     cloudComponent.cSignificant = true;
 
                     // components required for picking up the object

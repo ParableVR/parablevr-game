@@ -7,7 +7,7 @@ namespace parable.objects
 {
     public class CloudComponent : UnityEngine.MonoBehaviour
     {
-        public string cId { get; set; }
-        public bool cSignificant { get; set; }
+        public string cId;
+        public bool cSignificant;
     }
 }

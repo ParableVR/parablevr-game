@@ -50,7 +50,7 @@ namespace parable.eventloggers
                         }
                     }));
 
-                WWW www = new WWW(
+                new WWW(
                     "https://parablevr-game-api.azurewebsites.net/api/events/do/create/5bb4259bcc7ed83ee3cfbd89?code=WQEsFmDQHSx42xbo46EJetmg4cSeZevInEYdJm2K4axhWlGl8Y19CQ==",
                     postData, postHeaders);
             }
