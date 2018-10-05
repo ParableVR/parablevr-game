@@ -5,9 +5,9 @@ using System.Text;
 
 namespace parable.objects
 {
-    public class CloudComponent : UnityEngine.MonoBehaviour
+    public class CloudSessionResponse
     {
-        public string cId;
-        public bool cSignificant;
+        public string message { get; set; }
+        public CloudSession session { get; set; }
     }
 }
