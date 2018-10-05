@@ -11,6 +11,8 @@ namespace parable.eventloggers
     public class PerceptionEvent : MonoBehaviour, IFocusable
     {
         Stopwatch timer;
+        private string apiEndpoint = "https://parablevr-game-api.azurewebsites.net/api/events/do/create/object/{0}?code=CfDJ8AAAAAAAAAAAAAAAAAAAAABMBUlMTuLoZQ1iOBSnklN6UfGdh600fUexNhNV8umegz0BiCjpvJJAw1ZyfAPY9t8FPbJk3ewvhqDfd_5ITJBB6cUvh6cRfBeITjv88BVqAW5fMTitHu-rNQtusm49CTL0GTF7pgRZDcu7MJqg2C8ekhkE_cTyTHTKMJj7ImmMdw";
+
         void Start()
         {
             timer = new Stopwatch();
@@ -49,9 +51,11 @@ namespace parable.eventloggers
                             gameObject.GetComponent<CloudComponent>().cId
                         }
                     }));
-
-                new WWW(
-                    "https://parablevr-game-api.azurewebsites.net/api/events/do/create/5bb4259bcc7ed83ee3cfbd89?code=WQEsFmDQHSx42xbo46EJetmg4cSeZevInEYdJm2K4axhWlGl8Y19CQ==",
+                
+                new WWW(string.Format(
+                    apiEndpoint,
+                    GameObject.Find("/SceneContent/CloudSession")
+                        .GetComponent<CloudSessionManager>().eventSessionID__NO_TOUCH),
                     postData, postHeaders);
             }
 
