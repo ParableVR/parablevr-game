@@ -6,15 +6,18 @@ using Newtonsoft.Json;
 using System;
 using parable.objects;
 using parable.eventloggers;
+using HoloToolkit.Unity.InputModule;
 
 namespace parable
 {
-    public class CloudObjectsImport : MonoBehaviour {
+    public class CloudObjectsImport : MonoBehaviour
+    {
         public string scenarioID;
         private string apiEndpoint = "https://parablevr-game-api.azurewebsites.net/api/locations/get/scenario/id/{0}?code=CfDJ8AAAAAAAAAAAAAAAAAAAAAAhY076YteyT3NjroIt-aCpWMezMlrw_f3vZPrOj2xTx8sp8K9fcDB93PdsZXTr4jpSgE0evPindOQcNlVTih63J7q2jAeiN_XJe705PsWgJ3q0uS-vceosq1rlY6y8XeFlJaDu0b4lUqz7rCw4w-jn5tKV4-6_SCR-AyBDN1-fMA";
 
         // Use this for initialization
-        void Start () {
+        void Start()
+        {
             if (!string.IsNullOrEmpty(scenarioID))
             {
                 Transform cloudObjParent = GameObject.Find("/SceneContent/CloudObjects").transform;
@@ -45,7 +48,14 @@ namespace parable
                         cloudComponent.cSignificant = obj.significant;
 
                         // components required for picking up the object
-                        gameObject.AddComponent<HoloToolkit.Unity.InputModule.HandDraggable>();
+                        HandDraggable draggable = gameObject.AddComponent<HandDraggable>();
+                        draggable.StartedDragging += () => GameObject.Find("/SceneContent/CloudSession")
+                            .GetComponent<CloudSessionManager>()
+                            .HandleUserSelfGrab(gameObject);
+                        draggable.StoppedDragging += () => GameObject.Find("/SceneContent/CloudSession")
+                            .GetComponent<CloudSessionManager>()
+                            .HandleUserSelfDrop(gameObject);
+
                         gameObject.AddComponent<Rigidbody>();
                         gameObject.AddComponent<BoxCollider>();
 
