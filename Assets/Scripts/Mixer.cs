@@ -1,4 +1,5 @@
-﻿using parable.eventloggers;
+﻿using HoloToolkit.Unity.InputModule;
+using parable.eventloggers;
 using parable.objects;
 using System.Collections;
 using System.Collections.Generic;
@@ -10,6 +11,7 @@ namespace parable
     public class Mixer : MonoBehaviour
     {
         private Vector3 centre;
+        private bool isWaiting = false;
         void Start()
         {
             // setup the center pos of the sphere to inside the dryer object
@@ -31,12 +33,14 @@ namespace parable
 
             if (gameObjects.Count == 2) // should only be two items
             {
-                StartCoroutine(DispatchMixerEvent(gameObjects));
+                if (!isWaiting) StartCoroutine(DispatchMixerEvent(gameObjects));
             }
         }
 
         IEnumerator DispatchMixerEvent(List<GameObject> gameObjects)
         {
+            isWaiting = true; // don't dispatch any more until we're done here (prevents repeat dispatches)
+
             yield return new WaitForSeconds(1);
 
             // after selecting specific ids, should still be a count of two
@@ -65,7 +69,14 @@ namespace parable
                 cloudComponent.cSignificant = true;
 
                 // components required for picking up the object
-                gameObject.AddComponent<HoloToolkit.Unity.InputModule.HandDraggable>();
+                HandDraggable draggable = gameObject.AddComponent<HandDraggable>();
+                draggable.StartedDragging += () => GameObject.Find("/SceneContent/CloudSession")
+                    .GetComponent<CloudSessionManager>()
+                    .HandleUserSelfGrab(gameObject);
+                draggable.StoppedDragging += () => GameObject.Find("/SceneContent/CloudSession")
+                    .GetComponent<CloudSessionManager>()
+                    .HandleUserSelfDrop(gameObject);
+
                 gameObject.AddComponent<Rigidbody>();
                 gameObject.AddComponent<BoxCollider>();
 
@@ -78,6 +89,8 @@ namespace parable
                     // remove the objects to replace them with the thermite
                     Destroy(obj);
                 });
+
+                isWaiting = false;
             }
         }
     }

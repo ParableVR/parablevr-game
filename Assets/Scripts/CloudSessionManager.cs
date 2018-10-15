@@ -10,6 +10,7 @@ using System.Linq;
 using System;
 using System.Threading.Tasks;
 using System.Threading;
+using HoloToolkit.Unity.InputModule;
 
 namespace parable
 {
@@ -250,6 +251,11 @@ namespace parable
                             GameObject grabbed = cloudComponents.First().gameObject;
                             Rigidbody rigidBody = grabbed.GetComponent<Rigidbody>();
                             if (rigidBody != null) Destroy(rigidBody); // remove dragged rigid body to prevent gravity
+                            HandDraggable handDraggable = grabbed.GetComponent<HandDraggable>();
+                            if (handDraggable != null) Destroy(handDraggable); // remove dragability to prevent snatching
+
+                            CloudPlayerDragging playerDragging = grabbed.GetComponent<CloudPlayerDragging>();
+                            if (playerDragging == null) grabbed.AddComponent<CloudPlayerDragging>(); // add empty component to use in querying
 
                             // update the dragged object's position
                             grabbed.transform.position = new Vector3(
@@ -264,11 +270,21 @@ namespace parable
                                 float.Parse(args.Snapshot.Child("inventory").Child("quat_w").Value.ToString()));
 
                             // listen for delete events, so we can re-apply the rigidbody
-                            refUsers.Child(args.Snapshot.Key).Child("inventory")
-                                .ChildRemoved += delegate (object senderInv, ChildChangedEventArgs argsInv)
+                            EventHandler<ChildChangedEventArgs> onInvDelete = null; // set to null first, so it can be used to unsub inside the delegate
+                            onInvDelete = delegate (object senderInv, ChildChangedEventArgs argsInv)
+                            {
+                                if (argsInv.Snapshot.Key == "inventory")
                                 {
+                                    // inventory was removed (item was dropped)
                                     if (grabbed.GetComponent<Rigidbody>() == null) grabbed.AddComponent<Rigidbody>();
-                                };
+                                    if (grabbed.GetComponent<HandDraggable>() == null) grabbed.AddComponent<HandDraggable>();
+                                    if (grabbed.GetComponent<CloudPlayerDragging>() != null) Destroy(grabbed.GetComponent<CloudPlayerDragging>());
+
+                                    refUsers.Child(args.Snapshot.Key).ChildRemoved -= onInvDelete; // remove handler
+                                }
+                            };
+
+                            refUsers.Child(args.Snapshot.Key).ChildRemoved += onInvDelete;
                         }
                         else
                         {
@@ -306,28 +322,24 @@ namespace parable
             refUsers.Child(userName__NO_TOUCH).Child("inventory").RemoveValueAsync();
         }
 
-        public void HandleUserRemoteGrab(string username, string cId)
+
+        public int QueryIsBeingDragged(GameObject gameObject)
         {
+            string cId = gameObject.GetComponent<CloudComponent>().cId;
+
+            // check local first
+            if (dragging != null)
+            {
+                if (dragging.GetComponent<CloudComponent>().cId == cId) return 1; // local
+            }
             
-        }
 
-        public void HandleUserRemoteDrop(string username, string cId)
-        {
-            List<CloudComponent> cloudComponents = FindObjectsOfType<CloudComponent>()
-                .Where(x => x.cId == cId).ToList();
+            // check remote
+            List<CloudPlayerDragging> playersDragging = FindObjectsOfType<CloudPlayerDragging>()
+                .Where(x => x.GetComponent<CloudComponent>().cId == cId).ToList();
 
-            if (cloudComponents.Count == 1)
-            {
-                GameObject grabbed = cloudComponents.First().gameObject;
-                grabbed.AddComponent<Rigidbody>(); // restore rigidbody for normal functionality
-
-                Transform cloudObjects = GameObject.Find("/SceneContent/CloudObjects").transform;
-                grabbed.transform.SetParent(cloudObjects);
-            }
-            else
-            {
-                Debug.LogWarning(string.Format("HandleUserRemoteGrab returned {0} results, when it was expecting 1", cloudComponents.Count));
-            }
+            if (playersDragging.Count > 0) return 2; // remote
+            return 0; // none
         }
 
 

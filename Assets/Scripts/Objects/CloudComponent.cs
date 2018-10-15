@@ -1,7 +1,9 @@
-﻿using System;
+﻿using HoloToolkit.Unity.InputModule;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using UnityEngine;
 
 namespace parable.objects
 {
@@ -9,5 +11,28 @@ namespace parable.objects
     {
         public string cId;
         public bool cSignificant;
+
+        void OnDestroy()
+        {
+            CloudSessionManager sessionManager = GameObject.Find("/SceneContent/CloudSession").GetComponent<CloudSessionManager>();
+
+            int q = sessionManager.QueryIsBeingDragged(gameObject);
+            if (q > 0)
+            {
+                // is the object currently in somebodies hand?
+                if (q == 1)
+                {
+                    // was in local player's hand, drop it
+                    GetComponent<HandDraggable>().StopDragging();
+                }
+                else
+                {
+                    // remote (or other) person's hand
+                    // delete the inv entry
+
+                    //need to force a drop when it's removed for the local usr
+                }
+            }
+        }
     }
 }
