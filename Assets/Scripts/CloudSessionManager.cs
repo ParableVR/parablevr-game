@@ -30,6 +30,8 @@ namespace parable
         private List<GameObject> playerObjects = new List<GameObject>();
 
         private Vector3 lastPos;
+        private Quaternion lastQuat;
+
         private int updateFrame = 0;
 
         void Start()
@@ -113,16 +115,29 @@ namespace parable
                 {
                     if (Camera.main.gameObject.transform.position != lastPos)
                     {
-                        refUsers.Child(userName__NO_TOUCH).Child("x").SetValueAsync(
+                        refUsers.Child(userName__NO_TOUCH).Child("pos_x").SetValueAsync(
                             Camera.main.gameObject.transform.position.x);
-                        refUsers.Child(userName__NO_TOUCH).Child("z").SetValueAsync(
+                        refUsers.Child(userName__NO_TOUCH).Child("pos_y").SetValueAsync(
+                            Camera.main.gameObject.transform.position.y);
+                        refUsers.Child(userName__NO_TOUCH).Child("pos_z").SetValueAsync(
                             Camera.main.gameObject.transform.position.z);
                     }
 
+                    if (Camera.main.gameObject.transform.rotation != lastQuat)
+                    {
+                        refUsers.Child(userName__NO_TOUCH).Child("quat_pitch").SetValueAsync(
+                            Camera.main.gameObject.transform.rotation.x);
+                        refUsers.Child(userName__NO_TOUCH).Child("quat_yaw").SetValueAsync(
+                            Camera.main.gameObject.transform.rotation.y);
+                        refUsers.Child(userName__NO_TOUCH).Child("quat_roll").SetValueAsync(
+                            Camera.main.gameObject.transform.rotation.z);
+                    }
+
+                    lastPos = Camera.main.gameObject.transform.position;
+                    lastQuat = Camera.main.gameObject.transform.rotation;
                     updateFrame = 0;
                 }
 
-                lastPos = Camera.main.gameObject.transform.position;
                 updateFrame += 1;
             }
         }
@@ -147,14 +162,34 @@ namespace parable
                     GameObject user = (GameObject)Instantiate(
                         Resources.Load("Player", typeof(GameObject)),
                         new Vector3(
-                            float.Parse(values.Where(x => x.Key == "x").First().Value.ToString()),
-                            2.5f,
-                            float.Parse(values.Where(x => x.Key == "z").First().Value.ToString())),
-                        Quaternion.identity,
+                            float.Parse(values.Where(x => x.Key == "pos_x").First().Value.ToString()),
+                            float.Parse(values.Where(x => x.Key == "pos_y").First().Value.ToString()),
+                            float.Parse(values.Where(x => x.Key == "pos_z").First().Value.ToString())),
+                        new Quaternion(
+                            float.Parse(values.Where(x => x.Key == "quat_pitch").First().Value.ToString()),
+                            float.Parse(values.Where(x => x.Key == "quat_yaw").First().Value.ToString()),
+                            float.Parse(values.Where(x => x.Key == "quat_roll").First().Value.ToString()), 1),
                         sessionParent);
 
                     user.name = args.Snapshot.Key; // user's name
-                    user.AddComponent<ObjectPopupName>(); // show name on focus
+
+
+                    // create an empty container for text mesh
+                    GameObject textMeshContainer = new GameObject("TextMesh Container");
+                    textMeshContainer.transform.SetParent(user.transform); // move it under the obj, makes it easier to browse
+                    textMeshContainer.transform.Translate(user.transform.position); // move to initial position at the obj
+                    textMeshContainer.transform.Translate(0, -0.1f, 0, user.transform); // move it just below
+
+                    textMeshContainer.AddComponent<LookAtCamera>();
+
+                    // create the text mesh
+                    TextMesh textMesh = textMeshContainer.AddComponent<TextMesh>();
+                    textMesh.text = user.name;
+                    textMesh.characterSize = 0.02f;
+                    textMesh.fontSize = 152;
+                    textMesh.anchor = TextAnchor.MiddleCenter;
+                    textMesh.alignment = TextAlignment.Center;
+
 
                     playerObjects.Add(user);
                 });
@@ -196,9 +231,14 @@ namespace parable
 
                     GameObject player = playerObjects.Where(x => x.name == args.Snapshot.Key).First();
                     player.transform.position = new Vector3(
-                        float.Parse(values.Where(x => x.Key == "x").First().Value.ToString()),
-                        2.5f,
-                        float.Parse(values.Where(x => x.Key == "z").First().Value.ToString()));
+                        float.Parse(values.Where(x => x.Key == "pos_x").First().Value.ToString()),
+                        float.Parse(values.Where(x => x.Key == "pos_y").First().Value.ToString()),
+                        float.Parse(values.Where(x => x.Key == "pos_z").First().Value.ToString()));
+
+                    player.transform.rotation = new Quaternion(
+                        float.Parse(values.Where(x => x.Key == "quat_pitch").First().Value.ToString()),
+                        float.Parse(values.Where(x => x.Key == "quat_yaw").First().Value.ToString()),
+                        float.Parse(values.Where(x => x.Key == "quat_roll").First().Value.ToString()), 1);
                 });
             }
         }
