@@ -28,6 +28,7 @@ namespace parable
         public FirebaseApp fbApp = null;
         public DatabaseReference refUsers;
         private List<GameObject> playerObjects = new List<GameObject>();
+        private GameObject dragging = null;
 
         private Vector3 lastPos;
         private Quaternion lastQuat;
@@ -81,7 +82,8 @@ namespace parable
                             .DeserializeObject<CloudEventSessionResponse>(gameSessionEventRes.text);
                         eventSessionID__NO_TOUCH = cloudEvent.event_session.id;
 
-                        FirebaseApp.CheckAndFixDependenciesAsync().ContinueWith(task => {
+                        FirebaseApp.CheckAndFixDependenciesAsync().ContinueWith(task =>
+                        {
                             var dependencyStatus = task.Result;
                             if (dependencyStatus == Firebase.DependencyStatus.Available)
                             {
@@ -98,7 +100,7 @@ namespace parable
                             }
                             else
                             {
-                                Debug.LogError(System.String.Format(
+                                Debug.LogError(string.Format(
                                   "Could not resolve all Firebase dependencies: {0}", dependencyStatus));
                             }
                         });
@@ -111,7 +113,8 @@ namespace parable
         {
             if (fbApp != null)
             {
-                if (updateFrame == 10)
+                // be a little more sensible with hitting the DB
+                if (updateFrame == 6)
                 {
                     if (Camera.main.gameObject.transform.position != lastPos)
                     {
@@ -145,6 +148,7 @@ namespace parable
 
         void HandleUserLogin(object sender, ChildChangedEventArgs args)
         {
+            // user joined
             if (args.DatabaseError != null)
             {
                 Debug.LogError(args.DatabaseError.Message);
@@ -173,8 +177,12 @@ namespace parable
 
                     user.name = args.Snapshot.Key; // user's name
 
-
-                    // create an empty container for text mesh
+                    // user grabbed item inventory
+                    GameObject inv = new GameObject("Inventory");
+                    inv.transform.SetParent(user.transform);
+                    inv.transform.Translate(user.transform.position);
+                    
+                    // player tags
                     GameObject textMeshContainer = new GameObject("TextMesh Container");
                     textMeshContainer.transform.SetParent(user.transform); // move it under the obj, makes it easier to browse
                     textMeshContainer.transform.Translate(user.transform.position); // move to initial position at the obj
@@ -182,15 +190,14 @@ namespace parable
 
                     textMeshContainer.AddComponent<LookAtCamera>();
 
-                    // create the text mesh
+                    // create the actual text
                     TextMesh textMesh = textMeshContainer.AddComponent<TextMesh>();
                     textMesh.text = user.name;
                     textMesh.characterSize = 0.02f;
                     textMesh.fontSize = 152;
                     textMesh.anchor = TextAnchor.MiddleCenter;
                     textMesh.alignment = TextAlignment.Center;
-
-
+                    
                     playerObjects.Add(user);
                 });
             }
@@ -198,6 +205,7 @@ namespace parable
 
         void HandleUserLogoff(object sender, ChildChangedEventArgs args)
         {
+            // user left
             if (args.DatabaseError != null)
             {
                 Debug.LogError(args.DatabaseError.Message);
@@ -218,6 +226,7 @@ namespace parable
 
         void HandleUserUpdate(object sender, ChildChangedEventArgs args)
         {
+            // remote user performed some activity, like moving or grabbing
             if (args.DatabaseError != null)
             {
                 Debug.LogError(args.DatabaseError.Message);
@@ -226,7 +235,8 @@ namespace parable
 
             if (args.Snapshot.Key != userName__NO_TOUCH)
             {
-                UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                UnityMainThreadDispatcher.Instance().Enqueue(() =>
+                {
                     List<DataSnapshot> values = args.Snapshot.Children.ToList();
 
                     GameObject player = playerObjects.Where(x => x.name == args.Snapshot.Key).First();
@@ -240,6 +250,58 @@ namespace parable
                         float.Parse(values.Where(x => x.Key == "quat_yaw").First().Value.ToString()),
                         float.Parse(values.Where(x => x.Key == "quat_roll").First().Value.ToString()), 1);
                 });
+            }
+        }
+
+        // handling objects remotely and locally
+        public void HandleUserSelfGrab(GameObject gameObject)
+        {
+            dragging = gameObject;
+            CloudComponent cloudComponent = gameObject.GetComponent<CloudComponent>();
+            refUsers.Child(userName__NO_TOUCH).Child("item").SetValueAsync(cloudComponent.cId);
+        }
+
+        public void HandleUserSelfDrop(GameObject gameObject)
+        {
+            dragging = null;
+            refUsers.Child(userName__NO_TOUCH).Child("item").RemoveValueAsync();
+        }
+
+        public void HandleUserRemoteGrab(string username, string cId)
+        {
+            List<CloudComponent> cloudComponents = FindObjectsOfType<CloudComponent>()
+                .Where(x => x.cId == cId).ToList();
+
+            if (cloudComponents.Count == 1)
+            {
+                GameObject grabbed = cloudComponents.First().gameObject;
+                Destroy(grabbed.GetComponent<Rigidbody>()); // remove dragged rigid body to prevent gravity
+
+                Transform playerInv = GameObject.Find(string.Format("/SceneContent/CloudSession/{0}/Inventory", username)).transform;
+                grabbed.transform.SetParent(playerInv);
+            }
+            else
+            {
+                Debug.LogWarning(string.Format("HandleUserRemoteGrab returned {0} results, when it was expecting 1", cloudComponents.Count));
+            }
+        }
+
+        public void HandleUserRemoteDrop(string username, string cId)
+        {
+            List<CloudComponent> cloudComponents = FindObjectsOfType<CloudComponent>()
+                .Where(x => x.cId == cId).ToList();
+
+            if (cloudComponents.Count == 1)
+            {
+                GameObject grabbed = cloudComponents.First().gameObject;
+                grabbed.AddComponent<Rigidbody>(); // restore rigidbody for normal functionality
+
+                Transform cloudObjects = GameObject.Find("/SceneContent/CloudObjects").transform;
+                grabbed.transform.SetParent(cloudObjects);
+            }
+            else
+            {
+                Debug.LogWarning(string.Format("HandleUserRemoteGrab returned {0} results, when it was expecting 1", cloudComponents.Count));
             }
         }
 
