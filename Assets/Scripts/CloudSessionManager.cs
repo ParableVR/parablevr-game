@@ -30,9 +30,6 @@ namespace parable
         private List<GameObject> playerObjects = new List<GameObject>();
         private GameObject dragging = null;
 
-        private Vector3 lastPos;
-        private Quaternion lastQuat;
-
         private int updateFrame = 0;
 
         void Start()
@@ -114,30 +111,35 @@ namespace parable
             if (fbApp != null)
             {
                 // be a little more sensible with hitting the DB
-                if (updateFrame == 6)
+                if (updateFrame == 4)
                 {
-                    if (Camera.main.gameObject.transform.position != lastPos)
+                    refUsers.Child(userName__NO_TOUCH).UpdateChildrenAsync(new Dictionary<string, object>()
                     {
-                        refUsers.Child(userName__NO_TOUCH).Child("pos_x").SetValueAsync(
-                            Camera.main.gameObject.transform.position.x);
-                        refUsers.Child(userName__NO_TOUCH).Child("pos_y").SetValueAsync(
-                            Camera.main.gameObject.transform.position.y);
-                        refUsers.Child(userName__NO_TOUCH).Child("pos_z").SetValueAsync(
-                            Camera.main.gameObject.transform.position.z);
+                        { "pos_x", Camera.main.gameObject.transform.position.x },
+                        { "pos_y", Camera.main.gameObject.transform.position.y },
+                        { "pos_z", Camera.main.gameObject.transform.position.z },
+
+                        { "quat_x", Camera.main.gameObject.transform.rotation.x },
+                        { "quat_y", Camera.main.gameObject.transform.rotation.y },
+                        { "quat_z", Camera.main.gameObject.transform.rotation.z },
+                        { "quat_w", Camera.main.gameObject.transform.rotation.w }
+                    });
+
+                    if (dragging != null)
+                    {
+                        refUsers.Child(userName__NO_TOUCH).Child("inventory").UpdateChildrenAsync(new Dictionary<string, object>()
+                        {
+                            { "pos_x", dragging.transform.position.x },
+                            { "pos_y", dragging.transform.position.y },
+                            { "pos_z", dragging.transform.position.z },
+
+                            { "quat_x", dragging.transform.rotation.x },
+                            { "quat_y", dragging.transform.rotation.y },
+                            { "quat_z", dragging.transform.rotation.z },
+                            { "quat_w", dragging.transform.rotation.w }
+                        });
                     }
 
-                    if (Camera.main.gameObject.transform.rotation != lastQuat)
-                    {
-                        refUsers.Child(userName__NO_TOUCH).Child("quat_pitch").SetValueAsync(
-                            Camera.main.gameObject.transform.rotation.x);
-                        refUsers.Child(userName__NO_TOUCH).Child("quat_yaw").SetValueAsync(
-                            Camera.main.gameObject.transform.rotation.y);
-                        refUsers.Child(userName__NO_TOUCH).Child("quat_roll").SetValueAsync(
-                            Camera.main.gameObject.transform.rotation.z);
-                    }
-
-                    lastPos = Camera.main.gameObject.transform.position;
-                    lastQuat = Camera.main.gameObject.transform.rotation;
                     updateFrame = 0;
                 }
 
@@ -161,18 +163,17 @@ namespace parable
                 // gameobject interaction cannot be called asyncronously
                 UnityMainThreadDispatcher.Instance().Enqueue(() =>
                 {
-                    List<DataSnapshot> values = args.Snapshot.Children.ToList();
-
                     GameObject user = (GameObject)Instantiate(
                         Resources.Load("Player", typeof(GameObject)),
                         new Vector3(
-                            float.Parse(values.Where(x => x.Key == "pos_x").First().Value.ToString()),
-                            float.Parse(values.Where(x => x.Key == "pos_y").First().Value.ToString()),
-                            float.Parse(values.Where(x => x.Key == "pos_z").First().Value.ToString())),
+                            float.Parse(args.Snapshot.Child("pos_x").Value.ToString()),
+                            float.Parse(args.Snapshot.Child("pos_y").Value.ToString()),
+                            float.Parse(args.Snapshot.Child("pos_z").Value.ToString())),
                         new Quaternion(
-                            float.Parse(values.Where(x => x.Key == "quat_pitch").First().Value.ToString()),
-                            float.Parse(values.Where(x => x.Key == "quat_yaw").First().Value.ToString()),
-                            float.Parse(values.Where(x => x.Key == "quat_roll").First().Value.ToString()), 1),
+                            float.Parse(args.Snapshot.Child("quat_x").Value.ToString()),
+                            float.Parse(args.Snapshot.Child("quat_y").Value.ToString()),
+                            float.Parse(args.Snapshot.Child("quat_z").Value.ToString()),
+                            float.Parse(args.Snapshot.Child("quat_w").Value.ToString())),
                         sessionParent);
 
                     user.name = args.Snapshot.Key; // user's name
@@ -181,22 +182,12 @@ namespace parable
                     GameObject inv = new GameObject("Inventory");
                     inv.transform.SetParent(user.transform);
                     inv.transform.Translate(user.transform.position);
-                    
-                    // player tags
-                    GameObject textMeshContainer = new GameObject("TextMesh Container");
-                    textMeshContainer.transform.SetParent(user.transform); // move it under the obj, makes it easier to browse
-                    textMeshContainer.transform.Translate(user.transform.position); // move to initial position at the obj
-                    textMeshContainer.transform.Translate(0, -0.1f, 0, user.transform); // move it just below
 
-                    textMeshContainer.AddComponent<LookAtCamera>();
-
-                    // create the actual text
-                    TextMesh textMesh = textMeshContainer.AddComponent<TextMesh>();
-                    textMesh.text = user.name;
-                    textMesh.characterSize = 0.02f;
-                    textMesh.fontSize = 152;
-                    textMesh.anchor = TextAnchor.MiddleCenter;
-                    textMesh.alignment = TextAlignment.Center;
+                    // player nametag
+                    ObjectPopupName popup = user.AddComponent<ObjectPopupName>();
+                    popup.offset = new Vector3(0, -0.1f, 0);
+                    popup.charSize = 0.02f;
+                    popup.fontSize = 152;
                     
                     playerObjects.Add(user);
                 });
@@ -237,18 +228,53 @@ namespace parable
             {
                 UnityMainThreadDispatcher.Instance().Enqueue(() =>
                 {
-                    List<DataSnapshot> values = args.Snapshot.Children.ToList();
-
                     GameObject player = playerObjects.Where(x => x.name == args.Snapshot.Key).First();
                     player.transform.position = new Vector3(
-                        float.Parse(values.Where(x => x.Key == "pos_x").First().Value.ToString()),
-                        float.Parse(values.Where(x => x.Key == "pos_y").First().Value.ToString()),
-                        float.Parse(values.Where(x => x.Key == "pos_z").First().Value.ToString()));
+                        float.Parse(args.Snapshot.Child("pos_x").Value.ToString()),
+                        float.Parse(args.Snapshot.Child("pos_y").Value.ToString()),
+                        float.Parse(args.Snapshot.Child("pos_z").Value.ToString()));
 
                     player.transform.rotation = new Quaternion(
-                        float.Parse(values.Where(x => x.Key == "quat_pitch").First().Value.ToString()),
-                        float.Parse(values.Where(x => x.Key == "quat_yaw").First().Value.ToString()),
-                        float.Parse(values.Where(x => x.Key == "quat_roll").First().Value.ToString()), 1);
+                        float.Parse(args.Snapshot.Child("quat_x").Value.ToString()),
+                        float.Parse(args.Snapshot.Child("quat_y").Value.ToString()),
+                        float.Parse(args.Snapshot.Child("quat_z").Value.ToString()),
+                        float.Parse(args.Snapshot.Child("quat_w").Value.ToString()));
+
+                    if (args.Snapshot.HasChild("inventory"))
+                    {
+                        List<CloudComponent> cloudComponents = FindObjectsOfType<CloudComponent>()
+                            .Where(x => x.cId == args.Snapshot.Child("inventory").Child("cid").Value.ToString()).ToList();
+
+                        if (cloudComponents.Count == 1)
+                        {
+                            GameObject grabbed = cloudComponents.First().gameObject;
+                            Rigidbody rigidBody = grabbed.GetComponent<Rigidbody>();
+                            if (rigidBody != null) Destroy(rigidBody); // remove dragged rigid body to prevent gravity
+
+                            // update the dragged object's position
+                            grabbed.transform.position = new Vector3(
+                                float.Parse(args.Snapshot.Child("inventory").Child("pos_x").Value.ToString()),
+                                float.Parse(args.Snapshot.Child("inventory").Child("pos_y").Value.ToString()),
+                                float.Parse(args.Snapshot.Child("inventory").Child("pos_z").Value.ToString()));
+
+                            grabbed.transform.rotation = new Quaternion(
+                                float.Parse(args.Snapshot.Child("inventory").Child("quat_x").Value.ToString()),
+                                float.Parse(args.Snapshot.Child("inventory").Child("quat_y").Value.ToString()),
+                                float.Parse(args.Snapshot.Child("inventory").Child("quat_z").Value.ToString()),
+                                float.Parse(args.Snapshot.Child("inventory").Child("quat_w").Value.ToString()));
+
+                            // listen for delete events, so we can re-apply the rigidbody
+                            refUsers.Child(args.Snapshot.Key).Child("inventory")
+                                .ChildRemoved += delegate (object senderInv, ChildChangedEventArgs argsInv)
+                                {
+                                    if (grabbed.GetComponent<Rigidbody>() == null) grabbed.AddComponent<Rigidbody>();
+                                };
+                        }
+                        else
+                        {
+                            Debug.LogWarning(string.Format("HandleUserRemoteGrab returned {0} results, when it was expecting 1", cloudComponents.Count));
+                        }
+                    }
                 });
             }
         }
@@ -258,32 +284,31 @@ namespace parable
         {
             dragging = gameObject;
             CloudComponent cloudComponent = gameObject.GetComponent<CloudComponent>();
-            refUsers.Child(userName__NO_TOUCH).Child("item").SetValueAsync(cloudComponent.cId);
+
+            refUsers.Child(userName__NO_TOUCH).Child("inventory").UpdateChildrenAsync(new Dictionary<string, object>()
+            {
+                { "cid", cloudComponent.cId },
+
+                { "pos_x", cloudComponent.gameObject.transform.position.x },
+                { "pos_y", cloudComponent.gameObject.transform.position.y },
+                { "pos_z", cloudComponent.gameObject.transform.position.z },
+
+                { "quat_x", cloudComponent.gameObject.transform.rotation.x },
+                { "quat_y", cloudComponent.gameObject.transform.rotation.y },
+                { "quat_z", cloudComponent.gameObject.transform.rotation.z },
+                { "quat_w", cloudComponent.gameObject.transform.rotation.w }
+            });
         }
 
         public void HandleUserSelfDrop(GameObject gameObject)
         {
             dragging = null;
-            refUsers.Child(userName__NO_TOUCH).Child("item").RemoveValueAsync();
+            refUsers.Child(userName__NO_TOUCH).Child("inventory").RemoveValueAsync();
         }
 
         public void HandleUserRemoteGrab(string username, string cId)
         {
-            List<CloudComponent> cloudComponents = FindObjectsOfType<CloudComponent>()
-                .Where(x => x.cId == cId).ToList();
-
-            if (cloudComponents.Count == 1)
-            {
-                GameObject grabbed = cloudComponents.First().gameObject;
-                Destroy(grabbed.GetComponent<Rigidbody>()); // remove dragged rigid body to prevent gravity
-
-                Transform playerInv = GameObject.Find(string.Format("/SceneContent/CloudSession/{0}/Inventory", username)).transform;
-                grabbed.transform.SetParent(playerInv);
-            }
-            else
-            {
-                Debug.LogWarning(string.Format("HandleUserRemoteGrab returned {0} results, when it was expecting 1", cloudComponents.Count));
-            }
+            
         }
 
         public void HandleUserRemoteDrop(string username, string cId)
