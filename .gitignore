@@ -5,6 +5,9 @@
 [Bb]uilds/
 Assets/AssetStoreTools*
 
+# google config/password files
+Assets/StreamingAssets/google*
+
 # Visual Studio cache directory
 .vs/
 
