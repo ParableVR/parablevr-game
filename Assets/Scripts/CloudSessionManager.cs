@@ -8,8 +8,6 @@ using Firebase.Unity.Editor;
 using Firebase.Database;
 using System.Linq;
 using System;
-using System.Threading.Tasks;
-using System.Threading;
 using HoloToolkit.Unity.InputModule;
 
 namespace parable
@@ -22,6 +20,8 @@ namespace parable
         public string userName__NO_TOUCH;
 
         private Transform sessionParent;
+        private CloudObjectsImport cloudObjectsImport;
+        private GameObject loadingDialog;
 
         private string apiEndpointGameSession = "https://parablevr-game-api.azurewebsites.net/api/sessions/do/create?code=CfDJ8AAAAAAAAAAAAAAAAAAAAADNJEKs1Fi0AOz4An6VL1DBRb7xE2oplVqSskn286sr12-oGQZguS5xo7W86jYnVT_rOSGkg5wQXz-aVaiUPmwm74ahDxq4Ap8wk5jXUXjJc9w91-fa6oeTHog9r7wNEWa9aWDMUqfSm6wGWz56ZqnbwQGQBxqn04omuz5xYm487A";
         private string apiEndpointEventSession = "https://parablevr-game-api.azurewebsites.net/api/events/do/create/session?code=CfDJ8AAAAAAAAAAAAAAAAAAAAAB71DJNaYU9xwx70CEkF5aiOsYxa8tC-WaPmfWoJGEhOI29DxplwmjIJApLmOOrU07wEsXWg4zPryU0rlhxkNDIQ5lxrty3-Aeqf9jmN4I1hGLb8FMh8xllOAk--zrDFmF1zX09X68--JUP1hgEDVbCRYnhOoQxd0rsx0hjB6XnJw";
@@ -36,75 +36,8 @@ namespace parable
         void Start()
         {
             sessionParent = GameObject.Find("/SceneContent/CloudSession").transform;
-
-            if (!string.IsNullOrEmpty(scenarioID))
-            {
-                // create the game session
-                Dictionary<string, string> postHeaders = new Dictionary<string, string>();
-                postHeaders.Add("Content-Type", "application/json");
-
-                byte[] postData = System.Text.Encoding.UTF8
-                    .GetBytes(JsonConvert.SerializeObject(new
-                    {
-                        name = "iteration 2 demo",
-                        scenario = scenarioID,
-                        people = new List<object>()
-                        {
-                            // hard code the host user for now
-                            new { user = "5b957503c62d819750ee7ed0" }
-                        }
-                    }));
-
-                WWW gameSessionRes = new WWW(apiEndpointGameSession, postData, postHeaders);
-                while (!gameSessionRes.isDone) ;
-
-                if (!string.IsNullOrEmpty(gameSessionRes.text))
-                {
-                    CloudSessionResponse cloudSession = JsonConvert
-                        .DeserializeObject<CloudSessionResponse>(gameSessionRes.text);
-                    sessionID__NO_TOUCH = cloudSession.session.id;
-
-                    // create event session
-                    postData = System.Text.Encoding.UTF8
-                        .GetBytes(JsonConvert.SerializeObject(new
-                        {
-                            session = sessionID__NO_TOUCH
-                        }));
-
-                    WWW gameSessionEventRes = new WWW(apiEndpointEventSession, postData, postHeaders);
-                    while (!gameSessionEventRes.isDone) ;
-
-                    if (!string.IsNullOrEmpty(gameSessionEventRes.text))
-                    {
-                        CloudEventSessionResponse cloudEvent = JsonConvert
-                            .DeserializeObject<CloudEventSessionResponse>(gameSessionEventRes.text);
-                        eventSessionID__NO_TOUCH = cloudEvent.event_session.id;
-
-                        FirebaseApp.CheckAndFixDependenciesAsync().ContinueWith(task =>
-                        {
-                            var dependencyStatus = task.Result;
-                            if (dependencyStatus == Firebase.DependencyStatus.Available)
-                            {
-                                FirebaseApp.DefaultInstance.SetEditorDatabaseUrl("https://parablevr-game.firebaseio.com/");
-                                fbApp = FirebaseApp.DefaultInstance;
-
-                                // create the user's avatar here, added before listen to changes
-                                userName__NO_TOUCH = Guid.NewGuid().ToString();
-
-                                refUsers = FirebaseDatabase.DefaultInstance.GetReference("users");
-                                refUsers.ChildAdded += HandleUserLogin;
-                                refUsers.ChildRemoved += HandleUserLogoff;
-                                refUsers.ChildChanged += HandleUserUpdate;
-                            }
-                            else
-                            {
-                                Debug.LogError(string.Format(
-                                  "Could not resolve all Firebase dependencies: {0}", dependencyStatus));
-                            }
-                        });
-                    }
-                }
-            }
+            cloudObjectsImport = GameObject.Find("/SceneContent/CloudObjects").GetComponent<CloudObjectsImport>();
+            loadingDialog = GameObject.Find("/SceneContent/SessionStart/DialogLoading");
         }
 
         void Update()
@@ -149,6 +82,108 @@ namespace parable
         }
 
 
+        public IEnumerator StartSession()
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(scenarioID))
+                {
+                    // create the game session
+                    try
+                    {
+                        // create the game session
+                        Dictionary<string, string> postHeaders = new Dictionary<string, string>();
+                        postHeaders.Add("Content-Type", "application/json");
+
+                        byte[] postData = System.Text.Encoding.UTF8
+                            .GetBytes(JsonConvert.SerializeObject(new
+                            {
+                                name = "iteration 2 demo",
+                                scenario = scenarioID,
+                                people = new List<object>()
+                                {
+                            // hard code the host user for now
+                            new { user = "5b957503c62d819750ee7ed0" }
+                                }
+                            }));
+
+                        WWW gameSessionRes = new WWW(apiEndpointGameSession, postData, postHeaders);
+                        while (!gameSessionRes.isDone) ;
+
+                        if (!string.IsNullOrEmpty(gameSessionRes.text))
+                        {
+                            CloudSessionResponse cloudSession = JsonConvert
+                                .DeserializeObject<CloudSessionResponse>(gameSessionRes.text);
+                            sessionID__NO_TOUCH = cloudSession.session.id;
+
+                            try
+                            {
+                                postData = System.Text.Encoding.UTF8
+                                    .GetBytes(JsonConvert.SerializeObject(new
+                                    {
+                                        session = sessionID__NO_TOUCH
+                                    }));
+
+                                WWW gameSessionEventRes = new WWW(apiEndpointEventSession, postData, postHeaders);
+                                while (!gameSessionEventRes.isDone) ;
+
+                                if (!string.IsNullOrEmpty(gameSessionEventRes.text))
+                                {
+                                    CloudEventSessionResponse cloudEvent = JsonConvert
+                                        .DeserializeObject<CloudEventSessionResponse>(gameSessionEventRes.text);
+                                    eventSessionID__NO_TOUCH = cloudEvent.event_session.id;
+
+                                    // startup the objects import from the scenario db
+                                    cloudObjectsImport.Import();
+
+                                    FirebaseApp.CheckAndFixDependenciesAsync().ContinueWith(task =>
+                                    {
+                                        var dependencyStatus = task.Result;
+                                        if (dependencyStatus == Firebase.DependencyStatus.Available)
+                                        {
+                                            FirebaseApp.DefaultInstance.SetEditorDatabaseUrl("https://parablevr-game.firebaseio.com/");
+                                            fbApp = FirebaseApp.DefaultInstance;
+
+                                            // create the user's avatar here, added before listen to changes
+                                            userName__NO_TOUCH = Guid.NewGuid().ToString();
+
+                                            refUsers = FirebaseDatabase.DefaultInstance.GetReference("users");
+                                            refUsers.ChildAdded += HandleUserLogin;
+                                            refUsers.ChildRemoved += HandleUserLogoff;
+                                            refUsers.ChildChanged += HandleUserUpdate;
+                                        }
+                                        else
+                                        {
+                                            Debug.LogError(string.Format(
+                                              "Could not resolve all Firebase dependencies: {0}", dependencyStatus));
+                                        }
+                                    });
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                Debug.LogError(e);
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogError(e);
+                    }
+                }
+
+                UnityMainThreadDispatcher.Instance().Enqueue(() =>
+                    loadingDialog.SetActive(false)); // hide loading dialog
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+            }
+
+            yield return null;
+        }
+
+
         void HandleUserLogin(object sender, ChildChangedEventArgs args)
         {
             // user joined
@@ -189,7 +224,7 @@ namespace parable
                     popup.offset = new Vector3(0, -0.1f, 0);
                     popup.charSize = 0.02f;
                     popup.fontSize = 152;
-                    
+
                     playerObjects.Add(user);
                 });
             }
@@ -332,7 +367,7 @@ namespace parable
             {
                 if (dragging.GetComponent<CloudComponent>().cId == cId) return 1; // local
             }
-            
+
 
             // check remote
             List<CloudPlayerDragging> playersDragging = FindObjectsOfType<CloudPlayerDragging>()
@@ -345,8 +380,11 @@ namespace parable
 
         void OnApplicationQuit()
         {
-            // cleanup sessions and logout
-            refUsers.Child(userName__NO_TOUCH).RemoveValueAsync();
+            if (fbApp != null)
+            {
+                // cleanup sessions and logout
+                refUsers.Child(userName__NO_TOUCH).RemoveValueAsync();
+            }
         }
     }
 }
