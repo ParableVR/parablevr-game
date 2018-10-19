@@ -14,23 +14,29 @@ namespace parable.objects
 
         void OnDestroy()
         {
-            CloudSessionManager sessionManager = GameObject.Find("/SceneContent/CloudSession").GetComponent<CloudSessionManager>();
-
-            int q = sessionManager.QueryIsBeingDragged(gameObject);
-            if (q > 0)
+            GameObject cloudSession = GameObject.Find("/SceneContent/CloudSession");
+            if (cloudSession != null)
             {
-                // is the object currently in somebodies hand?
-                if (q == 1)
+                CloudSessionManager sessionManager = cloudSession.GetComponent<CloudSessionManager>();
+                if (sessionManager != null)
                 {
-                    // was in local player's hand, drop it
-                    GetComponent<HandDraggable>().StopDragging();
-                }
-                else
-                {
-                    // remote (or other) person's hand
-                    // delete the inv entry
+                    int q = sessionManager.QueryIsBeingDragged(gameObject);
+                    if (q > 0)
+                    {
+                        // is the object currently in somebodies hand?
+                        if (q == 1)
+                        {
+                            // was in local player's hand, drop it
+                            GetComponent<HandDraggable>().StopDragging();
+                        }
+                        else
+                        {
+                            // remote (or other) person's hand
+                            // delete the inv entry
 
-                    //need to force a drop when it's removed for the local usr
+                            //need to force a drop when it's removed for the local usr
+                        }
+                    }
                 }
             }
         }
