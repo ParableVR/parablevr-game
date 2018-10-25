@@ -20,8 +20,8 @@ public class ReceiverButtonClick : InteractionReceiver {
                 GameObject.Find("/SceneContent/SessionStart/DialogSelectScenario").SetActive(false); // disable this dialog
                 GameObject.Find("/SceneContent/SessionStart/DialogLoading").SetActive(true); // show the loading dialog
 
-                GameObject.Find("/SceneContent/CloudSession")
-                    .GetComponent<CloudSessionManager>().StartSession(); // boot the session
+                StartCoroutine(GameObject.Find("/SceneContent/CloudSession")
+                    .GetComponent<CloudSessionManager>().StartSession()); // boot the session
 
                 break;
         }
